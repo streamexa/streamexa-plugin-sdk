@@ -1,4 +1,4 @@
-module github.com/lanyitin/streamexa-plugin-sdk
+module github.com/streamexa/streamexa-plugin-sdk
 
 go 1.25.0
 

@@ -1370,7 +1370,7 @@ const file_streamexa_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x05Fetch\x12!.streamexa.plugin.v1.FetchRequest\x1a\".streamexa.plugin.v1.FetchResponse\x12H\n" +
 	"\x03Log\x12\x1f.streamexa.plugin.v1.LogRequest\x1a .streamexa.plugin.v1.LogResponse\x12]\n" +
 	"\n" +
-	"PlayVideos\x12&.streamexa.plugin.v1.PlayVideosRequest\x1a'.streamexa.plugin.v1.PlayVideosResponseB<Z:github.com/lanyitin/streamexa-plugin-sdk/pluginpb;pluginpbb\x06proto3"
+	"PlayVideos\x12&.streamexa.plugin.v1.PlayVideosRequest\x1a'.streamexa.plugin.v1.PlayVideosResponseB=Z;github.com/streamexa/streamexa-plugin-sdk/pluginpb;pluginpbb\x06proto3"
 
 var (
 	file_streamexa_plugin_v1_plugin_proto_rawDescOnce sync.Once

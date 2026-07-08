@@ -11,7 +11,7 @@ import (
 	goplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
-	"github.com/lanyitin/streamexa-plugin-sdk/pluginpb"
+	"github.com/streamexa/streamexa-plugin-sdk/pluginpb"
 )
 
 // PluginName is the dispense key both sides use for the single plugin service.

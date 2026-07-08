@@ -7,8 +7,8 @@ plugins:
   - local: ["go", "tool", "protoc-gen-go"]
     out: .
     opt:
-      - module=github.com/lanyitin/streamexa-plugin-sdk
+      - module=github.com/streamexa/streamexa-plugin-sdk
   - local: ["go", "tool", "protoc-gen-go-grpc"]
     out: .
     opt:
-      - module=github.com/lanyitin/streamexa-plugin-sdk
+      - module=github.com/streamexa/streamexa-plugin-sdk

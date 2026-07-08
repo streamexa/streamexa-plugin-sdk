@@ -1,6 +1,6 @@
 package pluginsdk
 
-import "github.com/lanyitin/streamexa-plugin-sdk/pluginpb"
+import "github.com/streamexa/streamexa-plugin-sdk/pluginpb"
 
 // snapshotFromProto converts an incoming wire snapshot to the SDK type.
 func snapshotFromProto(s *pluginpb.PageSnapshot) Snapshot {

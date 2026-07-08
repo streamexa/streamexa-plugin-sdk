@@ -12,8 +12,8 @@ import (
 	goplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
-	"github.com/lanyitin/streamexa-plugin-sdk/pluginpb"
-	"github.com/lanyitin/streamexa-plugin-sdk/transport"
+	"github.com/streamexa/streamexa-plugin-sdk/pluginpb"
+	"github.com/streamexa/streamexa-plugin-sdk/transport"
 )
 
 // Serve is the plugin entry point: a plugin author's main() calls this with

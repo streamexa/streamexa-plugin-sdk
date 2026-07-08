@@ -7,7 +7,7 @@ syntax = "proto3";
 // whitelisted actions. Plugins never receive raw CDP/Playwright objects.
 package streamexa.plugin.v1;
 
-option go_package = "github.com/lanyitin/streamexa-plugin-sdk/pluginpb;pluginpb";
+option go_package = "github.com/streamexa/streamexa-plugin-sdk/pluginpb;pluginpb";
 
 // PluginService is implemented by the plugin, invoked by the host once per
 // extraction.
