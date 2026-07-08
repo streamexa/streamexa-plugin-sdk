@@ -1,0 +1,14 @@
+version: v2
+# protoc-gen-go / protoc-gen-go-grpc are pinned via go.mod `tool` directives and
+# invoked here as `go tool` local plugins, so their versions live in go.mod.
+# module=<module path> trims that prefix from each file's go_package import path
+# to compute the output directory, so generated code lands directly at pluginpb/.
+plugins:
+  - local: ["go", "tool", "protoc-gen-go"]
+    out: .
+    opt:
+      - module=github.com/lanyitin/streamexa-plugin-sdk
+  - local: ["go", "tool", "protoc-gen-go-grpc"]
+    out: .
+    opt:
+      - module=github.com/lanyitin/streamexa-plugin-sdk

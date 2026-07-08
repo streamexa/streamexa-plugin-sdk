@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+// Package streamexa.plugin.v1 is the go-plugin gRPC contract between the Go
+// analyzer host and a Go plugin. PluginService is implemented by the plugin and
+// called by the host (Run). HostService is implemented by the host and called
+// back by the plugin over the go-plugin broker reverse channel for the
+// whitelisted actions. Plugins never receive raw CDP/Playwright objects.
+package streamexa.plugin.v1;
+
+option go_package = "github.com/lanyitin/streamexa-plugin-sdk/pluginpb;pluginpb";
+
+// PluginService is implemented by the plugin, invoked by the host once per
+// extraction.
+service PluginService {
+  // Run hands the plugin the read-only snapshot and a broker id for the reverse
+  // HostService, and returns the plugin's contribution.
+  rpc Run(RunRequest) returns (RunResponse);
+}
+
+// HostService is implemented by the host and called by the plugin over the
+// go-plugin broker. It is exactly the whitelisted action set — no Evaluate, no
+// raw browser access.
+service HostService {
+  rpc GetResponseBody(GetResponseBodyRequest) returns (GetResponseBodyResponse);
+  rpc Click(ClickRequest) returns (ClickResponse);
+  rpc WaitFor(WaitForRequest) returns (WaitForResponse);
+  rpc Snapshot(SnapshotRequest) returns (SnapshotResponse);
+  rpc Fetch(FetchRequest) returns (FetchResponse);
+  rpc Log(LogRequest) returns (LogResponse);
+  // PlayVideos clicks every <video> across all frames (including cross-origin
+  // iframes) in the plugin's isolated session, to trigger click-gated players.
+  rpc PlayVideos(PlayVideosRequest) returns (PlayVideosResponse);
+}
+
+// RunRequest carries the initial read-only snapshot plus the go-plugin broker id
+// the plugin dials to reach the host's reverse HostService.
+message RunRequest {
+  PageSnapshot snapshot = 1;
+  uint32 host_broker_id = 2;
+  string target_url = 3;
+}
+
+message RunResponse {
+  PluginResult result = 1;
+}
+
+// PageSnapshot is the read-only view of the current CDP context: DOM, iframes,
+// completed requests (headers redacted), and native stream analysis results. It
+// carries no response bodies.
+message PageSnapshot {
+  string page_dom = 1;
+  repeated IFrameDom iframes = 2;
+  repeated CapturedRequest requests = 3;
+  repeated AnalyzedSource stream_results = 4;
+}
+
+message IFrameDom {
+  string frame_url = 1;
+  string dom = 2;
+}
+
+message CapturedRequest {
+  string id = 1;
+  string method = 2;
+  string url = 3;
+  int32 status = 4;
+  string resource_type = 5;
+  map<string, string> headers = 6;
+  string media_type = 7;
+  double video_duration = 8;
+  bool is_ad = 9;
+  bool is_live_stream = 10;
+}
+
+// AnalyzedSource mirrors the host's detection.AnalyzedSource shape.
+message AnalyzedSource {
+  string url = 1;
+  map<string, string> request_headers = 2;
+  string mime_type = 3;
+  double video_duration = 4;
+  int64 estimated_bytes = 5;
+}
+
+// PluginResult is exactly {sources, task?, metadata?}.
+message PluginResult {
+  repeated AnalyzedSource sources = 1;
+  PluginTask task = 2;
+  map<string, string> metadata = 3;
+}
+
+message PluginTask {
+  repeated AnalyzedSource sources = 1;
+  map<string, string> labels = 2;
+}
+
+message GetResponseBodyRequest {
+  string request_id = 1;
+}
+
+message GetResponseBodyResponse {
+  bool found = 1;
+  string body = 2;
+}
+
+message ClickRequest {
+  string selector = 1;
+}
+
+message WaitForRequest {
+  // Exactly one of selector or timeout_ms is used: a non-empty selector waits
+  // for that element; otherwise timeout_ms waits a fixed duration.
+  string selector = 1;
+  int64 timeout_ms = 2;
+}
+
+message ClickResponse {
+  bool ok = 1;
+  string error = 2;
+}
+
+message WaitForResponse {
+  bool ok = 1;
+  string error = 2;
+}
+
+message SnapshotRequest {}
+
+message SnapshotResponse {
+  PageSnapshot snapshot = 1;
+}
+
+message FetchRequest {
+  string url = 1;
+  string method = 2;
+  map<string, string> headers = 3;
+  string body = 4;
+}
+
+message FetchResponse {
+  int32 status = 1;
+  map<string, string> headers = 2;
+  string body = 3;
+}
+
+message LogRequest {
+  string level = 1;
+  string message = 2;
+}
+
+message LogResponse {}
+
+message PlayVideosRequest {}
+
+message PlayVideosResponse {
+  // clicked is the number of <video> elements successfully clicked across all
+  // frames. Zero clicks (no video / all clicks failed) is ok=true, not an error.
+  int32 clicked = 1;
+  bool ok = 2;
+  string error = 3;
+}

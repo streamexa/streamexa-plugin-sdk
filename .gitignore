@@ -1,0 +1,4 @@
+# Built binaries (e.g. the sampleplugin main package) and OS cruft.
+/sampleplugin
+*.test
+.DS_Store

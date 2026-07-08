@@ -1,0 +1,25 @@
+# Tool versions for the streamexa-plugin-sdk module, matched to the host repo so
+# generated bindings stay byte-identical across both.
+[tools]
+go = "1.25.6"
+buf = "1.71.0"
+
+[tasks.proto-gen]
+description = "Generate Go bindings from proto/ via buf"
+run = "buf generate"
+
+[tasks.proto-verify]
+description = "Lint protos and fail if committed bindings drift from the schema"
+run = """
+buf lint
+buf generate
+if ! git diff --quiet -- pluginpb/; then
+  echo "proto-verify: generated bindings are out of date; run 'mise run proto-gen' and commit the result." >&2
+  git --no-pager diff --stat -- pluginpb/
+  exit 1
+fi
+"""
+
+[tasks.test]
+description = "Build and test the SDK module"
+run = "go build ./... && go test ./..."
