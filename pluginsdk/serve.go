@@ -72,7 +72,7 @@ func startDebugServe(p Plugin, reattachFile string) (stop func(), err error) {
 	closeCh := make(chan struct{})
 	go goplugin.Serve(&goplugin.ServeConfig{
 		HandshakeConfig: transport.Handshake,
-		Plugins:         transport.ServerPluginSet(&grpcServer{impl: p}),
+		Plugins:         transport.ServerPluginSet(&grpcServer{impl: p, eager: true}),
 		GRPCServer:      goplugin.DefaultGRPCServer,
 		Test: &goplugin.ServeTestConfig{
 			Context:          ctx,
@@ -120,6 +120,11 @@ type grpcServer struct {
 	pluginpb.UnimplementedPluginServiceServer
 	impl   Plugin
 	broker *goplugin.GRPCBroker
+	// eager, set only in debug-serve mode, makes Run establish the host-action
+	// reverse channel before invoking the plugin's Run body. This moves the
+	// broker's fixed 5s Dial ahead of any breakpoint the developer sets in Run,
+	// so a paused debugger does not trip that timeout (capability go-plugin-runtime).
+	eager bool
 }
 
 // SetBroker satisfies transport.BrokerAware.
@@ -128,6 +133,14 @@ func (s *grpcServer) SetBroker(b *goplugin.GRPCBroker) { s.broker = b }
 func (s *grpcServer) Run(ctx context.Context, req *pluginpb.RunRequest) (*pluginpb.RunResponse, error) {
 	api := &apiClient{ctx: ctx, broker: s.broker, brokerID: req.GetHostBrokerId()}
 	defer api.close()
+
+	if s.eager {
+		// Establish the host-action channel now, while goroutines run freely —
+		// not lazily on the first action call, which may happen while the
+		// developer is paused at a breakpoint (a debugger freezes the broker
+		// goroutine, tripping the broker's fixed 5s Dial timeout).
+		api.ensureConnected()
+	}
 
 	res, err := s.impl.Run(ctx, api, snapshotFromProto(req.GetSnapshot()))
 	if err != nil {
@@ -172,6 +185,12 @@ func (a *apiClient) close() {
 		_ = a.conn.Close()
 	}
 }
+
+// ensureConnected eagerly runs the one-time broker Dial so the host-action
+// channel is ready before the plugin's Run body executes (debug-serve mode). Any
+// error is cached and surfaced on the first actual action call, exactly as in the
+// lazy path — a plugin that performs no actions is unaffected.
+func (a *apiClient) ensureConnected() { _, _ = a.client() }
 
 func (a *apiClient) GetResponseBody(requestID string) (string, error) {
 	h, err := a.client()
