@@ -192,19 +192,24 @@ func (a *apiClient) close() {
 // lazy path — a plugin that performs no actions is unaffected.
 func (a *apiClient) ensureConnected() { _, _ = a.client() }
 
-func (a *apiClient) GetResponseBody(requestID string) (string, error) {
+func (a *apiClient) GetResponseBody(requestID string) (ResponseBody, error) {
 	h, err := a.client()
 	if err != nil {
-		return "", err
+		return ResponseBody{}, err
 	}
 	resp, err := h.GetResponseBody(a.ctx, &pluginpb.GetResponseBodyRequest{RequestId: requestID})
 	if err != nil {
-		return "", err
+		return ResponseBody{}, err
 	}
 	if !resp.GetFound() {
-		return "", fmt.Errorf("response body not found for request id %q", requestID)
+		return ResponseBody{}, fmt.Errorf("response body not found for request id %q", requestID)
 	}
-	return resp.GetBody(), nil
+	return ResponseBody{
+		Status:    int(resp.GetStatus()),
+		Headers:   resp.GetHeaders(),
+		Body:      resp.GetBody(),
+		MediaType: resp.GetMediaType(),
+	}, nil
 }
 
 func (a *apiClient) Click(selector string) error {

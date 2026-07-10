@@ -13,16 +13,18 @@ func snapshotFromProto(s *pluginpb.PageSnapshot) Snapshot {
 	}
 	for _, r := range s.GetRequests() {
 		out.Requests = append(out.Requests, Request{
-			ID:            r.GetId(),
-			Method:        r.GetMethod(),
-			URL:           r.GetUrl(),
-			Status:        int(r.GetStatus()),
-			ResourceType:  r.GetResourceType(),
-			Headers:       r.GetHeaders(),
-			MediaType:     r.GetMediaType(),
-			VideoDuration: r.GetVideoDuration(),
-			IsAd:          r.GetIsAd(),
-			IsLiveStream:  r.GetIsLiveStream(),
+			ID:              r.GetId(),
+			Method:          r.GetMethod(),
+			URL:             r.GetUrl(),
+			Status:          int(r.GetStatus()),
+			ResourceType:    r.GetResourceType(),
+			Headers:         r.GetHeaders(),
+			ResponseHeaders: r.GetResponseHeaders(),
+			MediaType:       r.GetMediaType(),
+			VideoDuration:   r.GetVideoDuration(),
+			IsAd:            r.GetIsAd(),
+			IsLiveStream:    r.GetIsLiveStream(),
+			Body:            r.GetBody(),
 		})
 	}
 	for _, s := range s.GetStreamResults() {

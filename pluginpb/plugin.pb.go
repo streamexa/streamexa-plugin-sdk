@@ -268,6 +268,13 @@ type CapturedRequest struct {
 	VideoDuration float64                `protobuf:"fixed64,8,opt,name=video_duration,json=videoDuration,proto3" json:"video_duration,omitempty"`
 	IsAd          bool                   `protobuf:"varint,9,opt,name=is_ad,json=isAd,proto3" json:"is_ad,omitempty"`
 	IsLiveStream  bool                   `protobuf:"varint,10,opt,name=is_live_stream,json=isLiveStream,proto3" json:"is_live_stream,omitempty"`
+	// response_headers are the completed response's headers, redacted by the same
+	// sensitive-header set as request headers (Cookie/Authorization/Set-Cookie).
+	ResponseHeaders map[string]string `protobuf:"bytes,11,rep,name=response_headers,json=responseHeaders,proto3" json:"response_headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// body is the inlined response body for host-captured manifests
+	// (.m3u8/.mpd). It is empty for all other requests, whose bodies remain
+	// fetch-on-demand via GetResponseBody.
+	Body          string `protobuf:"bytes,12,opt,name=body,proto3" json:"body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -370,6 +377,20 @@ func (x *CapturedRequest) GetIsLiveStream() bool {
 		return x.IsLiveStream
 	}
 	return false
+}
+
+func (x *CapturedRequest) GetResponseHeaders() map[string]string {
+	if x != nil {
+		return x.ResponseHeaders
+	}
+	return nil
+}
+
+func (x *CapturedRequest) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
 }
 
 // AnalyzedSource mirrors the host's detection.AnalyzedSource shape.
@@ -607,9 +628,15 @@ func (x *GetResponseBodyRequest) GetRequestId() string {
 }
 
 type GetResponseBodyResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Found         bool                   `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
-	Body          string                 `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Found bool                   `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
+	Body  string                 `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
+	// status, headers and media_type describe the response so the plugin knows
+	// what the body is without re-issuing the request. headers are redacted by
+	// the same sensitive-header set as the snapshot.
+	Status        int32             `protobuf:"varint,3,opt,name=status,proto3" json:"status,omitempty"`
+	Headers       map[string]string `protobuf:"bytes,4,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	MediaType     string            `protobuf:"bytes,5,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -654,6 +681,27 @@ func (x *GetResponseBodyResponse) GetFound() bool {
 func (x *GetResponseBodyResponse) GetBody() string {
 	if x != nil {
 		return x.Body
+	}
+	return ""
+}
+
+func (x *GetResponseBodyResponse) GetStatus() int32 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
+func (x *GetResponseBodyResponse) GetHeaders() map[string]string {
+	if x != nil {
+		return x.Headers
+	}
+	return nil
+}
+
+func (x *GetResponseBodyResponse) GetMediaType() string {
+	if x != nil {
+		return x.MediaType
 	}
 	return ""
 }
@@ -1274,7 +1322,7 @@ const file_streamexa_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x0estream_results\x18\x04 \x03(\v2#.streamexa.plugin.v1.AnalyzedSourceR\rstreamResults\":\n" +
 	"\tIFrameDom\x12\x1b\n" +
 	"\tframe_url\x18\x01 \x01(\tR\bframeUrl\x12\x10\n" +
-	"\x03dom\x18\x02 \x01(\tR\x03dom\"\x92\x03\n" +
+	"\x03dom\x18\x02 \x01(\tR\x03dom\"\xd0\x04\n" +
 	"\x0fCapturedRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06method\x18\x02 \x01(\tR\x06method\x12\x10\n" +
@@ -1287,8 +1335,13 @@ const file_streamexa_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x0evideo_duration\x18\b \x01(\x01R\rvideoDuration\x12\x13\n" +
 	"\x05is_ad\x18\t \x01(\bR\x04isAd\x12$\n" +
 	"\x0eis_live_stream\x18\n" +
-	" \x01(\bR\fisLiveStream\x1a:\n" +
+	" \x01(\bR\fisLiveStream\x12d\n" +
+	"\x10response_headers\x18\v \x03(\v29.streamexa.plugin.v1.CapturedRequest.ResponseHeadersEntryR\x0fresponseHeaders\x12\x12\n" +
+	"\x04body\x18\f \x01(\tR\x04body\x1a:\n" +
 	"\fHeadersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
+	"\x14ResponseHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb4\x02\n" +
 	"\x0eAnalyzedSource\x12\x10\n" +
@@ -1316,10 +1369,17 @@ const file_streamexa_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"7\n" +
 	"\x16GetResponseBodyRequest\x12\x1d\n" +
 	"\n" +
-	"request_id\x18\x01 \x01(\tR\trequestId\"C\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\"\x8b\x02\n" +
 	"\x17GetResponseBodyResponse\x12\x14\n" +
 	"\x05found\x18\x01 \x01(\bR\x05found\x12\x12\n" +
-	"\x04body\x18\x02 \x01(\tR\x04body\"*\n" +
+	"\x04body\x18\x02 \x01(\tR\x04body\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\x05R\x06status\x12S\n" +
+	"\aheaders\x18\x04 \x03(\v29.streamexa.plugin.v1.GetResponseBodyResponse.HeadersEntryR\aheaders\x12\x1d\n" +
+	"\n" +
+	"media_type\x18\x05 \x01(\tR\tmediaType\x1a:\n" +
+	"\fHeadersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"*\n" +
 	"\fClickRequest\x12\x1a\n" +
 	"\bselector\x18\x01 \x01(\tR\bselector\"K\n" +
 	"\x0eWaitForRequest\x12\x1a\n" +
@@ -1384,7 +1444,7 @@ func file_streamexa_plugin_v1_plugin_proto_rawDescGZIP() []byte {
 	return file_streamexa_plugin_v1_plugin_proto_rawDescData
 }
 
-var file_streamexa_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_streamexa_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_streamexa_plugin_v1_plugin_proto_goTypes = []any{
 	(*RunRequest)(nil),              // 0: streamexa.plugin.v1.RunRequest
 	(*RunResponse)(nil),             // 1: streamexa.plugin.v1.RunResponse
@@ -1409,11 +1469,13 @@ var file_streamexa_plugin_v1_plugin_proto_goTypes = []any{
 	(*PlayVideosRequest)(nil),       // 20: streamexa.plugin.v1.PlayVideosRequest
 	(*PlayVideosResponse)(nil),      // 21: streamexa.plugin.v1.PlayVideosResponse
 	nil,                             // 22: streamexa.plugin.v1.CapturedRequest.HeadersEntry
-	nil,                             // 23: streamexa.plugin.v1.AnalyzedSource.RequestHeadersEntry
-	nil,                             // 24: streamexa.plugin.v1.PluginResult.MetadataEntry
-	nil,                             // 25: streamexa.plugin.v1.PluginTask.LabelsEntry
-	nil,                             // 26: streamexa.plugin.v1.FetchRequest.HeadersEntry
-	nil,                             // 27: streamexa.plugin.v1.FetchResponse.HeadersEntry
+	nil,                             // 23: streamexa.plugin.v1.CapturedRequest.ResponseHeadersEntry
+	nil,                             // 24: streamexa.plugin.v1.AnalyzedSource.RequestHeadersEntry
+	nil,                             // 25: streamexa.plugin.v1.PluginResult.MetadataEntry
+	nil,                             // 26: streamexa.plugin.v1.PluginTask.LabelsEntry
+	nil,                             // 27: streamexa.plugin.v1.GetResponseBodyResponse.HeadersEntry
+	nil,                             // 28: streamexa.plugin.v1.FetchRequest.HeadersEntry
+	nil,                             // 29: streamexa.plugin.v1.FetchResponse.HeadersEntry
 }
 var file_streamexa_plugin_v1_plugin_proto_depIdxs = []int32{
 	2,  // 0: streamexa.plugin.v1.RunRequest.snapshot:type_name -> streamexa.plugin.v1.PageSnapshot
@@ -1422,36 +1484,38 @@ var file_streamexa_plugin_v1_plugin_proto_depIdxs = []int32{
 	4,  // 3: streamexa.plugin.v1.PageSnapshot.requests:type_name -> streamexa.plugin.v1.CapturedRequest
 	5,  // 4: streamexa.plugin.v1.PageSnapshot.stream_results:type_name -> streamexa.plugin.v1.AnalyzedSource
 	22, // 5: streamexa.plugin.v1.CapturedRequest.headers:type_name -> streamexa.plugin.v1.CapturedRequest.HeadersEntry
-	23, // 6: streamexa.plugin.v1.AnalyzedSource.request_headers:type_name -> streamexa.plugin.v1.AnalyzedSource.RequestHeadersEntry
-	5,  // 7: streamexa.plugin.v1.PluginResult.sources:type_name -> streamexa.plugin.v1.AnalyzedSource
-	7,  // 8: streamexa.plugin.v1.PluginResult.task:type_name -> streamexa.plugin.v1.PluginTask
-	24, // 9: streamexa.plugin.v1.PluginResult.metadata:type_name -> streamexa.plugin.v1.PluginResult.MetadataEntry
-	5,  // 10: streamexa.plugin.v1.PluginTask.sources:type_name -> streamexa.plugin.v1.AnalyzedSource
-	25, // 11: streamexa.plugin.v1.PluginTask.labels:type_name -> streamexa.plugin.v1.PluginTask.LabelsEntry
-	2,  // 12: streamexa.plugin.v1.SnapshotResponse.snapshot:type_name -> streamexa.plugin.v1.PageSnapshot
-	26, // 13: streamexa.plugin.v1.FetchRequest.headers:type_name -> streamexa.plugin.v1.FetchRequest.HeadersEntry
-	27, // 14: streamexa.plugin.v1.FetchResponse.headers:type_name -> streamexa.plugin.v1.FetchResponse.HeadersEntry
-	0,  // 15: streamexa.plugin.v1.PluginService.Run:input_type -> streamexa.plugin.v1.RunRequest
-	8,  // 16: streamexa.plugin.v1.HostService.GetResponseBody:input_type -> streamexa.plugin.v1.GetResponseBodyRequest
-	10, // 17: streamexa.plugin.v1.HostService.Click:input_type -> streamexa.plugin.v1.ClickRequest
-	11, // 18: streamexa.plugin.v1.HostService.WaitFor:input_type -> streamexa.plugin.v1.WaitForRequest
-	14, // 19: streamexa.plugin.v1.HostService.Snapshot:input_type -> streamexa.plugin.v1.SnapshotRequest
-	16, // 20: streamexa.plugin.v1.HostService.Fetch:input_type -> streamexa.plugin.v1.FetchRequest
-	18, // 21: streamexa.plugin.v1.HostService.Log:input_type -> streamexa.plugin.v1.LogRequest
-	20, // 22: streamexa.plugin.v1.HostService.PlayVideos:input_type -> streamexa.plugin.v1.PlayVideosRequest
-	1,  // 23: streamexa.plugin.v1.PluginService.Run:output_type -> streamexa.plugin.v1.RunResponse
-	9,  // 24: streamexa.plugin.v1.HostService.GetResponseBody:output_type -> streamexa.plugin.v1.GetResponseBodyResponse
-	12, // 25: streamexa.plugin.v1.HostService.Click:output_type -> streamexa.plugin.v1.ClickResponse
-	13, // 26: streamexa.plugin.v1.HostService.WaitFor:output_type -> streamexa.plugin.v1.WaitForResponse
-	15, // 27: streamexa.plugin.v1.HostService.Snapshot:output_type -> streamexa.plugin.v1.SnapshotResponse
-	17, // 28: streamexa.plugin.v1.HostService.Fetch:output_type -> streamexa.plugin.v1.FetchResponse
-	19, // 29: streamexa.plugin.v1.HostService.Log:output_type -> streamexa.plugin.v1.LogResponse
-	21, // 30: streamexa.plugin.v1.HostService.PlayVideos:output_type -> streamexa.plugin.v1.PlayVideosResponse
-	23, // [23:31] is the sub-list for method output_type
-	15, // [15:23] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	23, // 6: streamexa.plugin.v1.CapturedRequest.response_headers:type_name -> streamexa.plugin.v1.CapturedRequest.ResponseHeadersEntry
+	24, // 7: streamexa.plugin.v1.AnalyzedSource.request_headers:type_name -> streamexa.plugin.v1.AnalyzedSource.RequestHeadersEntry
+	5,  // 8: streamexa.plugin.v1.PluginResult.sources:type_name -> streamexa.plugin.v1.AnalyzedSource
+	7,  // 9: streamexa.plugin.v1.PluginResult.task:type_name -> streamexa.plugin.v1.PluginTask
+	25, // 10: streamexa.plugin.v1.PluginResult.metadata:type_name -> streamexa.plugin.v1.PluginResult.MetadataEntry
+	5,  // 11: streamexa.plugin.v1.PluginTask.sources:type_name -> streamexa.plugin.v1.AnalyzedSource
+	26, // 12: streamexa.plugin.v1.PluginTask.labels:type_name -> streamexa.plugin.v1.PluginTask.LabelsEntry
+	27, // 13: streamexa.plugin.v1.GetResponseBodyResponse.headers:type_name -> streamexa.plugin.v1.GetResponseBodyResponse.HeadersEntry
+	2,  // 14: streamexa.plugin.v1.SnapshotResponse.snapshot:type_name -> streamexa.plugin.v1.PageSnapshot
+	28, // 15: streamexa.plugin.v1.FetchRequest.headers:type_name -> streamexa.plugin.v1.FetchRequest.HeadersEntry
+	29, // 16: streamexa.plugin.v1.FetchResponse.headers:type_name -> streamexa.plugin.v1.FetchResponse.HeadersEntry
+	0,  // 17: streamexa.plugin.v1.PluginService.Run:input_type -> streamexa.plugin.v1.RunRequest
+	8,  // 18: streamexa.plugin.v1.HostService.GetResponseBody:input_type -> streamexa.plugin.v1.GetResponseBodyRequest
+	10, // 19: streamexa.plugin.v1.HostService.Click:input_type -> streamexa.plugin.v1.ClickRequest
+	11, // 20: streamexa.plugin.v1.HostService.WaitFor:input_type -> streamexa.plugin.v1.WaitForRequest
+	14, // 21: streamexa.plugin.v1.HostService.Snapshot:input_type -> streamexa.plugin.v1.SnapshotRequest
+	16, // 22: streamexa.plugin.v1.HostService.Fetch:input_type -> streamexa.plugin.v1.FetchRequest
+	18, // 23: streamexa.plugin.v1.HostService.Log:input_type -> streamexa.plugin.v1.LogRequest
+	20, // 24: streamexa.plugin.v1.HostService.PlayVideos:input_type -> streamexa.plugin.v1.PlayVideosRequest
+	1,  // 25: streamexa.plugin.v1.PluginService.Run:output_type -> streamexa.plugin.v1.RunResponse
+	9,  // 26: streamexa.plugin.v1.HostService.GetResponseBody:output_type -> streamexa.plugin.v1.GetResponseBodyResponse
+	12, // 27: streamexa.plugin.v1.HostService.Click:output_type -> streamexa.plugin.v1.ClickResponse
+	13, // 28: streamexa.plugin.v1.HostService.WaitFor:output_type -> streamexa.plugin.v1.WaitForResponse
+	15, // 29: streamexa.plugin.v1.HostService.Snapshot:output_type -> streamexa.plugin.v1.SnapshotResponse
+	17, // 30: streamexa.plugin.v1.HostService.Fetch:output_type -> streamexa.plugin.v1.FetchResponse
+	19, // 31: streamexa.plugin.v1.HostService.Log:output_type -> streamexa.plugin.v1.LogResponse
+	21, // 32: streamexa.plugin.v1.HostService.PlayVideos:output_type -> streamexa.plugin.v1.PlayVideosResponse
+	25, // [25:33] is the sub-list for method output_type
+	17, // [17:25] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_streamexa_plugin_v1_plugin_proto_init() }
@@ -1465,7 +1529,7 @@ func file_streamexa_plugin_v1_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_streamexa_plugin_v1_plugin_proto_rawDesc), len(file_streamexa_plugin_v1_plugin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   28,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

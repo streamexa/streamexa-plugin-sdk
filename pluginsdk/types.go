@@ -28,9 +28,10 @@ type Plugin interface {
 // API is the host-mediated action whitelist available to a plugin during Run.
 // It exposes no browser object — only capabilities.
 type API interface {
-	// GetResponseBody returns the response body for a request id present in the
-	// snapshot, or an error for an unknown/expired id.
-	GetResponseBody(requestID string) (string, error)
+	// GetResponseBody returns the response — status, redacted headers, body and
+	// media type — for a request id present in the snapshot, or an error for an
+	// unknown/expired id.
+	GetResponseBody(requestID string) (ResponseBody, error)
 	// Click clicks the first element matching selector.
 	Click(selector string) error
 	// WaitForSelector waits until an element matching selector is present.
@@ -69,16 +70,23 @@ type IFrame struct {
 // Request is one completed request with redacted headers plus native
 // classification the host computed.
 type Request struct {
-	ID            string
-	Method        string
-	URL           string
-	Status        int
-	ResourceType  string
-	Headers       map[string]string
-	MediaType     string
-	VideoDuration float64
-	IsAd          bool
-	IsLiveStream  bool
+	ID           string
+	Method       string
+	URL          string
+	Status       int
+	ResourceType string
+	Headers      map[string]string
+	// ResponseHeaders are the completed response's headers, redacted by the
+	// same sensitive-header set as Headers.
+	ResponseHeaders map[string]string
+	MediaType       string
+	VideoDuration   float64
+	IsAd            bool
+	IsLiveStream    bool
+	// Body is the inlined response body for host-captured manifests
+	// (.m3u8/.mpd); it is empty for every other request, whose body is fetched
+	// on demand via API.GetResponseBody.
+	Body string
 }
 
 // Source mirrors the host's analyzed-source shape.
@@ -116,4 +124,14 @@ type FetchResponse struct {
 	Status  int
 	Headers map[string]string
 	Body    string
+}
+
+// ResponseBody is a self-describing on-demand response: the status code, the
+// redacted response headers, the body, and the media type — so a plugin knows
+// what a fetched body is without re-issuing the request.
+type ResponseBody struct {
+	Status    int
+	Headers   map[string]string
+	Body      string
+	MediaType string
 }

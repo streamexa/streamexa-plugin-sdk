@@ -70,6 +70,13 @@ message CapturedRequest {
   double video_duration = 8;
   bool is_ad = 9;
   bool is_live_stream = 10;
+  // response_headers are the completed response's headers, redacted by the same
+  // sensitive-header set as request headers (Cookie/Authorization/Set-Cookie).
+  map<string, string> response_headers = 11;
+  // body is the inlined response body for host-captured manifests
+  // (.m3u8/.mpd). It is empty for all other requests, whose bodies remain
+  // fetch-on-demand via GetResponseBody.
+  string body = 12;
 }
 
 // AnalyzedSource mirrors the host's detection.AnalyzedSource shape.
@@ -100,6 +107,12 @@ message GetResponseBodyRequest {
 message GetResponseBodyResponse {
   bool found = 1;
   string body = 2;
+  // status, headers and media_type describe the response so the plugin knows
+  // what the body is without re-issuing the request. headers are redacted by
+  // the same sensitive-header set as the snapshot.
+  int32 status = 3;
+  map<string, string> headers = 4;
+  string media_type = 5;
 }
 
 message ClickRequest {
